@@ -12,7 +12,7 @@
 
 ## 🚀 Демо
 Приложение доступно онлайн:  
-👉 [uzi-calculator.streamlit.app](https://uzi-calculator.streamlit.app)
+👉 [uzi-calculator.streamlit.app](https://uzi-calculator-akopyan.streamlit.app)
 
 ## 📋 Как использовать
 1. Выберите тип анализа в боковой панели
