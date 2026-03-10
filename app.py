@@ -220,7 +220,12 @@ else:
                 st.error("❌ В каждой группе должно быть минимум 2 значения")
             else:
                 # Расчет
-                statistic, p_value = mannwhitneyu(g1, g2, alternative='two-sided')
+                statistic, p_value = mannwhitneyu(
+                    g1,
+                    g2,
+                    alternative="two-sided",
+                    method="auto"
+                )
                 
                 # Сохраняем в историю
                 timestamp = datetime.now().strftime("%H:%M:%S")
