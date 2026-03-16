@@ -288,8 +288,8 @@ with tab1:
                     st.subheader("📈 Box plot")
                     
                     fig = go.Figure()
-                    fig.add_trace(go.Box(y=g1, name=group1_name_mw, boxmean='sd', marker_color='blue'))
-                    fig.add_trace(go.Box(y=g2, name=group2_name_mw, boxmean='sd', marker_color='red'))
+                    fig.add_trace(go.Box(y=g1, name=group1_name_mw, boxmean='sd', marker_color='#e74c3c'))
+                    fig.add_trace(go.Box(y=g2, name=group2_name_mw, boxmean='sd', marker_color='#2ecc71'))
                     fig.update_layout(
                         title=f"Сравнение: {feature_name_mw}",
                         yaxis_title=feature_name_mw,
@@ -321,7 +321,7 @@ with tab1:
                 st.info("Убедитесь, что значения введены правильно (числа через запятую или пробел)")
 
 # ============================================
-# ВКЛАДКА 2: ЯПОНСКИЕ СВЕЧИ (КРАСИВЫЕ ГРАФИКИ)
+# ВКЛАДКА 2: ЯПОНСКИЕ СВЕЧИ (ПРАВИЛЬНЫЕ!)
 # ============================================
 with tab2:
     st.header("📈 Японские свечи для анализа гемодинамики")
@@ -342,7 +342,7 @@ with tab2:
         ### Правила:
         1. **ID** - любой текст
         2. **Диагноз** - строго **ПОЯ** или **РЯ**
-        3. **V_капс** - скорость в капсуле
+        3. **V_капс** - скорость в капсуле (периферия)
         4. **V_перег** - скорость в перегородках
         5. **V_центр** - скорость в центре
         """)
@@ -412,14 +412,14 @@ with tab2:
                     poya = result_df[result_df['Диагноз'] == 'ПОЯ']
                     rya = result_df[result_df['Диагноз'] == 'РЯ']
                     
-                    # Манн-Уитни
+                    # Манн-Уитни для длины тела
                     u_stat, p_body = mannwhitneyu(
                         poya['Длина_тела'].dropna(), 
                         rya['Длина_тела'].dropna(),
                         alternative='two-sided'
                     )
                     
-                    # Таблица для Фишера
+                    # Таблица для критерия Фишера (направление свечей)
                     poya_bull = len(poya[poya['Body'] > 0])
                     poya_bear = len(poya[poya['Body'] < 0])
                     rya_bull = len(rya[rya['Body'] > 0])
@@ -440,7 +440,7 @@ with tab2:
                             st.success(f"**p = {p_body:.3f}**")
                     
                     with col_stat2:
-                        st.markdown("### 🎯 Направление")
+                        st.markdown("### 🎯 Направление свечей")
                         st.write(f"ПОЯ: Бычьих {poya_bull}, Медвежьих {poya_bear}")
                         st.write(f"РЯ: Бычьих {rya_bull}, Медвежьих {rya_bear}")
                         if p_fisher < 0.001:
@@ -450,14 +450,14 @@ with tab2:
                     
                     with col_stat3:
                         st.markdown("### 📋 Сводка")
-                        st.write(f"Всего: {len(result_df)}")
+                        st.write(f"Всего пациентов: {len(result_df)}")
                         st.write(f"ПОЯ: {len(poya)} ({len(poya)/len(result_df)*100:.0f}%)")
                         st.write(f"РЯ: {len(rya)} ({len(rya)/len(result_df)*100:.0f}%)")
                     
-                    # === КРАСИВЫЙ ГРАФИК СВЕЧЕЙ ===
+                    # === ПРАВИЛЬНЫЕ ЯПОНСКИЕ СВЕЧИ ===
                     st.markdown("---")
                     st.subheader("📈 Японские свечи")
-                    st.markdown("*Наведите на свечу для деталей*")
+                    st.markdown("*Наведите на свечу для деталей • Нажмите на иконку камеры, чтобы скачать PNG*")
                     
                     # Подготовка данных
                     plot_df = result_df.copy()
@@ -466,24 +466,23 @@ with tab2:
                     # Создаём график
                     fig = go.Figure()
                     
-                    # Добавляем каждую свечу
+                    # Рисуем каждую свечу
                     for _, row in plot_df.iterrows():
-                        # Определяем цвет
-                        if row['Body'] > 0:  # Бычья (рост)
-                            body_color = '#2ecc71'  # зелёный
-                            body_lower = row['Open']
-                            body_upper = row['Close']
-                        else:  # Медвежья (падение)
-                            body_color = '#e74c3c'  # красный
-                            body_lower = row['Close']
-                            body_upper = row['Open']
+                        if row['Body'] > 0:  # Бычья свеча (зелёная)
+                            body_color = '#2ecc71'
+                            body_low = row['Open']
+                            body_high = row['Close']
+                        else:  # Медвежья свеча (красная)
+                            body_color = '#e74c3c'
+                            body_low = row['Close']
+                            body_high = row['Open']
                         
-                        # Тень (High-Low) - тонкая линия через всю свечу
+                        # Фитиль (High-Low) - тонкая чёрная линия
                         fig.add_trace(go.Scatter(
                             x=[row['x'], row['x']],
                             y=[row['Low'], row['High']],
                             mode='lines',
-                            line=dict(color='black', width=1),
+                            line=dict(color='#000000', width=1),
                             showlegend=False,
                             hoverinfo='skip'
                         ))
@@ -491,22 +490,23 @@ with tab2:
                         # Тело свечи (Open-Close) - толстый прямоугольник
                         fig.add_trace(go.Scatter(
                             x=[row['x'], row['x']],
-                            y=[body_lower, body_upper],
+                            y=[body_low, body_high],
                             mode='lines',
-                            line=dict(color=body_color, width=8),
+                            line=dict(color=body_color, width=12),
                             name=row['ID'],
                             text=f"ID: {row['ID']}<br>"
                                  f"Диагноз: {row['Диагноз']}<br>"
-                                 f"Open: {row['Open']}<br>"
-                                 f"Close: {row['Close']}<br>"
-                                 f"High: {row['High']}<br>"
-                                 f"Low: {row['Low']}<br>"
-                                 f"Body: {row['Body']:.1f}",
+                                 f"Open (капсула): {row['Open']:.1f}<br>"
+                                 f"Close (центр): {row['Close']:.1f}<br>"
+                                 f"High: {row['High']:.1f}<br>"
+                                 f"Low: {row['Low']:.1f}<br>"
+                                 f"Body: {row['Body']:.1f}<br>"
+                                 f"{'↑ Рост к центру' if row['Body'] > 0 else '↓ Падение к центру'}",
                             hoverinfo='text',
                             showlegend=False
                         ))
                     
-                    # Добавляем разделительную линию между группами
+                    # Разделительная линия между группами
                     fig.add_vline(x=poya_count - 0.5, line_dash="dash", line_color="gray", line_width=2)
                     
                     # Подписи групп
@@ -528,8 +528,8 @@ with tab2:
                     # Настройка графика
                     fig.update_layout(
                         title=dict(
-                            text="Японские свечи: гемодинамический профиль",
-                            font=dict(size=20)
+                            text="Японские свечи: гемодинамический профиль (периферия → центр)",
+                            font=dict(size=18)
                         ),
                         xaxis_title="Пациенты",
                         yaxis_title="Скорость кровотока (см/с)",
@@ -539,12 +539,55 @@ with tab2:
                         showlegend=False
                     )
                     
-                    fig.update_xaxes(tickmode='linear', tick0=0, dtick=1)
+                    fig.update_xaxes(tickmode='linear', tick0=0, dtick=2, gridcolor='lightgray')
                     fig.update_yaxes(gridcolor='lightgray')
                     
-                    st.plotly_chart(fig, use_container_width=True))
+                    st.plotly_chart(fig, use_container_width=True)
                     
-                    # === СОХРАНЕНИЕ EXCEL И TXT ===
+                    # === BOX PLOT ДЛЯ ДЛИНЫ ТЕЛА ===
+                    st.subheader("📊 Сравнение длины тела свечей")
+                    st.markdown("*Нажмите на иконку камеры, чтобы скачать график*")
+                    
+                    fig2 = go.Figure()
+                    
+                    fig2.add_trace(go.Box(
+                        y=poya['Длина_тела'],
+                        name='ПОЯ',
+                        marker_color='#e74c3c',
+                        boxmean='sd',
+                        boxpoints='all',
+                        jitter=0.3,
+                        pointpos=-1.8,
+                        line=dict(color='#c0392b', width=2),
+                        fillcolor='rgba(231,76,60,0.3)'
+                    ))
+                    
+                    fig2.add_trace(go.Box(
+                        y=rya['Длина_тела'],
+                        name='РЯ',
+                        marker_color='#2ecc71',
+                        boxmean='sd',
+                        boxpoints='all',
+                        jitter=0.3,
+                        pointpos=-1.8,
+                        line=dict(color='#27ae60', width=2),
+                        fillcolor='rgba(46,204,113,0.3)'
+                    ))
+                    
+                    fig2.update_layout(
+                        title=dict(
+                            text="Распределение длины тела свечи |Close - Open|",
+                            font=dict(size=16)
+                        ),
+                        yaxis_title="Длина тела (см/с)",
+                        template="plotly_white",
+                        height=500,
+                        showlegend=False
+                    )
+                    
+                    st.plotly_chart(fig2, use_container_width=True)
+                    
+                    # === СОХРАНЕНИЕ РЕЗУЛЬТАТОВ ===
                     st.markdown("---")
                     st.subheader("💾 Сохранить результаты")
                     
@@ -622,8 +665,8 @@ p-value (точный критерий Фишера): {p_fisher:.4f}
 
 ИНТЕРПРЕТАЦИЯ
 ================================
-{'✅ РАЗЛИЧИЯ СТАТИСТИЧЕСКИ ЗНАЧИМЫ (p < 0.05)' if p_body < 0.05 else '❌ Различия не доказаны (p ≥ 0.05)'}
-{'✅ Направление свечей значимо различается' if p_fisher < 0.05 else '❌ Направление свечей не различается'}
+{'✅ Различия в длине тела статистически значимы (p < 0.05)' if p_body < 0.05 else '❌ Различия в длине тела не доказаны (p ≥ 0.05)'}
+{'✅ Различия в направлении свечей значимы (p < 0.05)' if p_fisher < 0.05 else '❌ Различия в направлении свечей не доказаны (p ≥ 0.05)'}
 """
                         
                         st.download_button(
@@ -633,30 +676,34 @@ p-value (точный критерий Фишера): {p_fisher:.4f}
                         )
                     
                     # Интерпретация
-                    with st.expander("📊 Интерпретация результатов"):
+                    with st.expander("📊 Как интерпретировать результаты"):
                         st.markdown("""
-                        ### Как читать результаты
+                        ### Как читать график японских свечей
                         
-                        **Зелёные свечи (растущие)** = Close > Open  
-                        → скорость кровотока **увеличивается** к центру  
-                        → характерно для **РЯ** (рак)
+                        **Каждая свеча — одна пациентка:**
+                        - **Тонкая чёрная линия (фитиль)** — разброс скоростей (High - Low)
+                        - **Толстое тело** — изменение скорости от периферии к центру
                         
-                        **Красные свечи (падающие)** = Close < Open  
-                        → скорость кровотока **уменьшается** к центру  
-                        → характерно для **ПОЯ** (пограничные)
+                        **Цвет тела:**
+                        - **🟢 Зелёное тело** (Close > Open) — скорость растёт к центру → **РЯ**
+                        - **🔴 Красное тело** (Close < Open) — скорость падает к центру → **ПОЯ**
+                        
+                        **Длина тела:** |Close - Open| — насколько сильно изменилась скорость
                         
                         **Статистика:**
-                        - **p < 0.05** = различия значимы
-                        - **p < 0.001** = различия высоко значимы
+                        - **p < 0.05** — различия статистически значимы
+                        - **p < 0.001** — различия высоко значимы
                         
-                        **Как скачать графики:**
-                        Нажмите на иконку **камеры** в правом верхнем углу любого графика Plotly, чтобы сохранить его как PNG.
+                        **Как сохранить графики:**
+                        1. Наведите на график
+                        2. Нажмите на иконку **камеры** в правом верхнем углу
+                        3. Выберите формат PNG
                         """)
         
         except Exception as e:
             st.error(f"❌ Ошибка: {str(e)}")
-            st.info("Проверьте формат файла")
+            st.info("Проверьте формат файла. Должны быть колонки: ID, Диагноз, V_капс, V_перег, V_центр")
 
 # Подвал
 st.markdown("---")
-st.markdown("**📌 Для диссертации: статистика + визуализация**")
+st.markdown("**📌 Для диссертации: статистический калькулятор + визуализация японскими свечами**")
