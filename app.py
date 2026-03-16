@@ -457,40 +457,48 @@ with tab2:
                     # === КРАСИВЫЙ ГРАФИК СВЕЧЕЙ ===
                     st.markdown("---")
                     st.subheader("📈 Японские свечи")
-                    st.markdown("*Наведите на свечу для деталей. Нажмите на иконку камеры в правом верхнем углу графика, чтобы скачать PNG*")
+                    st.markdown("*Наведите на свечу для деталей*")
                     
                     # Подготовка данных
                     plot_df = result_df.copy()
                     plot_df['x'] = range(len(plot_df))
                     
-                    # Создаём красивый график
+                    # Создаём график
                     fig = go.Figure()
                     
                     # Добавляем каждую свечу
                     for _, row in plot_df.iterrows():
-                        color = '#2ecc71' if row['Body'] > 0 else '#e74c3c'  # зелёный/красный
+                        # Определяем цвет
+                        if row['Body'] > 0:  # Бычья (рост)
+                            body_color = '#2ecc71'  # зелёный
+                            body_lower = row['Open']
+                            body_upper = row['Close']
+                        else:  # Медвежья (падение)
+                            body_color = '#e74c3c'  # красный
+                            body_lower = row['Close']
+                            body_upper = row['Open']
                         
-                        # Тень (High-Low) - тонкая линия
+                        # Тень (High-Low) - тонкая линия через всю свечу
                         fig.add_trace(go.Scatter(
                             x=[row['x'], row['x']],
                             y=[row['Low'], row['High']],
                             mode='lines',
-                            line=dict(color='#95a5a6', width=1),
+                            line=dict(color='black', width=1),
                             showlegend=False,
                             hoverinfo='skip'
                         ))
                         
-                        # Тело свечи (Open-Close) - толстая линия
+                        # Тело свечи (Open-Close) - толстый прямоугольник
                         fig.add_trace(go.Scatter(
                             x=[row['x'], row['x']],
-                            y=[row['Open'], row['Close']],
+                            y=[body_lower, body_upper],
                             mode='lines',
-                            line=dict(color=color, width=6),
+                            line=dict(color=body_color, width=8),
                             name=row['ID'],
                             text=f"ID: {row['ID']}<br>"
                                  f"Диагноз: {row['Диагноз']}<br>"
-                                 f"Open (капсула): {row['Open']}<br>"
-                                 f"Close (центр): {row['Close']}<br>"
+                                 f"Open: {row['Open']}<br>"
+                                 f"Close: {row['Close']}<br>"
                                  f"High: {row['High']}<br>"
                                  f"Low: {row['Low']}<br>"
                                  f"Body: {row['Body']:.1f}",
@@ -499,88 +507,42 @@ with tab2:
                         ))
                     
                     # Добавляем разделительную линию между группами
-                    fig.add_vline(x=poya_count - 0.5, line_dash="dash", line_color="black", line_width=2)
+                    fig.add_vline(x=poya_count - 0.5, line_dash="dash", line_color="gray", line_width=2)
                     
                     # Подписи групп
                     fig.add_annotation(
                         x=poya_count/2,
-                        y=plot_df['High'].max() * 1.05,
-                        text="ПОЯ (пограничные)",
+                        y=plot_df['High'].max() * 1.1,
+                        text="ПОЯ",
                         showarrow=False,
-                        font=dict(size=16, color="#e74c3c", family="Arial Black")
+                        font=dict(size=18, color="#e74c3c", family="Arial Black")
                     )
                     fig.add_annotation(
                         x=poya_count + rya_count/2,
-                        y=plot_df['High'].max() * 1.05,
-                        text="РЯ (рак)",
+                        y=plot_df['High'].max() * 1.1,
+                        text="РЯ",
                         showarrow=False,
-                        font=dict(size=16, color="#2ecc71", family="Arial Black")
+                        font=dict(size=18, color="#2ecc71", family="Arial Black")
                     )
                     
                     # Настройка графика
                     fig.update_layout(
                         title=dict(
-                            text="Японские свечи: скорость кровотока от периферии к центру",
+                            text="Японские свечи: гемодинамический профиль",
                             font=dict(size=20)
                         ),
-                        xaxis_title="Пациенты (по порядку)",
+                        xaxis_title="Пациенты",
                         yaxis_title="Скорость кровотока (см/с)",
                         template="plotly_white",
                         height=600,
                         hovermode='closest',
-                        plot_bgcolor='rgba(240,240,240,0.3)'
-                    )
-                    
-                    fig.update_xaxes(tickmode='linear', tick0=0, dtick=2, gridcolor='lightgray')
-                    fig.update_yaxes(gridcolor='lightgray')
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # === КРАСИВЫЙ BOX PLOT ===
-                    st.subheader("📊 Сравнение длины тела свечей")
-                    st.markdown("*Нажмите на иконку камеры, чтобы скачать график*")
-                    
-                    fig2 = go.Figure()
-                    
-                    fig2.add_trace(go.Box(
-                        y=poya['Длина_тела'],
-                        name='ПОЯ',
-                        marker_color='#e74c3c',
-                        boxmean='sd',
-                        boxpoints='all',
-                        jitter=0.3,
-                        pointpos=-1.8,
-                        line=dict(color='#c0392b', width=2),
-                        fillcolor='rgba(231,76,60,0.3)'
-                    ))
-                    
-                    fig2.add_trace(go.Box(
-                        y=rya['Длина_тела'],
-                        name='РЯ',
-                        marker_color='#2ecc71',
-                        boxmean='sd',
-                        boxpoints='all',
-                        jitter=0.3,
-                        pointpos=-1.8,
-                        line=dict(color='#27ae60', width=2),
-                        fillcolor='rgba(46,204,113,0.3)'
-                    ))
-                    
-                    fig2.update_layout(
-                        title=dict(
-                            text="Распределение длины тела свечи |Close - Open|",
-                            font=dict(size=18)
-                        ),
-                        yaxis_title="Длина тела (см/с)",
-                        template="plotly_white",
-                        height=500,
-                        plot_bgcolor='rgba(240,240,240,0.3)',
                         showlegend=False
                     )
                     
-                    fig2.update_yaxes(gridcolor='lightgray')
+                    fig.update_xaxes(tickmode='linear', tick0=0, dtick=1)
+                    fig.update_yaxes(gridcolor='lightgray')
                     
-                    st.plotly_chart(fig2, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True))
                     
                     # === СОХРАНЕНИЕ EXCEL И TXT ===
                     st.markdown("---")
