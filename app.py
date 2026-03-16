@@ -19,6 +19,12 @@ st.set_page_config(
 st.title("📊 УЗИ Статистический калькулятор + Японские свечи")
 st.markdown("---")
 
+# Инструкция по установке kaleido (если нужно)
+with st.sidebar:
+    st.markdown("### 🛠 Установка")
+    st.code("pip install --upgrade kaleido", language="bash")
+    st.markdown("---")
+
 # Создаём вкладки
 tab1, tab2 = st.tabs(["📊 Калькулятор (Фишер/Манн-Уитни)", "📈 Японские свечи (гемодинамика)"])
 
@@ -288,9 +294,13 @@ with tab1:
                     st.subheader("📈 Box plot")
                     
                     fig = go.Figure()
-                    fig.add_trace(go.Box(y=g1, name=group1_name_mw, boxmean='sd'))
-                    fig.add_trace(go.Box(y=g2, name=group2_name_mw, boxmean='sd'))
-                    fig.update_layout(title=f"Сравнение: {feature_name_mw}")
+                    fig.add_trace(go.Box(y=g1, name=group1_name_mw, boxmean='sd', marker_color='blue'))
+                    fig.add_trace(go.Box(y=g2, name=group2_name_mw, boxmean='sd', marker_color='red'))
+                    fig.update_layout(
+                        title=f"Сравнение: {feature_name_mw}",
+                        yaxis_title=feature_name_mw,
+                        template='plotly_white'
+                    )
                     st.plotly_chart(fig, use_container_width=True)
                     
                     # Описательная статистика
@@ -299,8 +309,8 @@ with tab1:
                     
                     stats_df = pd.DataFrame({
                         'Показатель': ['Количество', 'Среднее', 'Медиана', 'Стд. отклонение', 'Мин', 'Макс'],
-                        group1_name_mw: [len(g1), np.mean(g1), np.median(g1), np.std(g1), np.min(g1), np.max(g1)],
-                        group2_name_mw: [len(g2), np.mean(g2), np.median(g2), np.std(g2), np.min(g2), np.max(g2)]
+                        group1_name_mw: [len(g1), f"{np.mean(g1):.1f}", f"{np.median(g1):.1f}", f"{np.std(g1):.1f}", f"{np.min(g1):.1f}", f"{np.max(g1):.1f}"],
+                        group2_name_mw: [len(g2), f"{np.mean(g2):.1f}", f"{np.median(g2):.1f}", f"{np.std(g2):.1f}", f"{np.min(g2):.1f}", f"{np.max(g2):.1f}"]
                     })
                     
                     st.dataframe(stats_df, use_container_width=True)
@@ -317,10 +327,13 @@ with tab1:
                 st.info("Убедитесь, что значения введены правильно (числа через запятую или пробел)")
 
 # ============================================
-# ВКЛАДКА 2: ЯПОНСКИЕ СВЕЧИ
+# ВКЛАДКА 2: ЯПОНСКИЕ СВЕЧИ (ИСПРАВЛЕНО)
 # ============================================
 with tab2:
     st.header("📈 Японские свечи для анализа гемодинамики")
+    
+    # Предупреждение о kaleido
+    st.info("ℹ️ Для сохранения графиков установите: `pip install --upgrade kaleido`")
     
     # Инструкция
     with st.expander("📖 ИНСТРУКЦИЯ: Как подготовить файл Excel", expanded=True):
@@ -336,21 +349,18 @@ with tab2:
         | РЯ-001 | РЯ | 32 | 35 | 41 |
         
         ### Правила:
-        1. **ID** - любой текст (ПОЯ-001, РЯ-001, Пациент1 и т.д.)
-        2. **Диагноз** - строго два варианта: **ПОЯ** или **РЯ**
-        3. **V_капс** - скорость в капсуле (число)
-        4. **V_перег** - скорость в перегородках (число)
-        5. **V_центр** - скорость в центре (число)
-        
-        ✅ Все 5 колонок обязательны!
+        1. **ID** - любой текст
+        2. **Диагноз** - строго **ПОЯ** или **РЯ**
+        3. **V_капс** - скорость в капсуле
+        4. **V_перег** - скорость в перегородках
+        5. **V_центр** - скорость в центре
         """)
     
     # Загрузка файла
     uploaded_file = st.file_uploader(
         "📂 Загрузите файл Excel", 
         type=['xlsx', 'xls'],
-        key='candle_upload',
-        help="Файл должен содержать колонки: ID, Диагноз, V_капс, V_перег, V_центр"
+        key='candle_upload'
     )
     
     if uploaded_file:
@@ -364,224 +374,226 @@ with tab2:
                 st.error(f"❌ Ошибка: В файле должны быть колонки: {', '.join(required_columns)}")
                 st.write("Ваши колонки:", list(df.columns))
             else:
-                st.success("✅ Файл загружен, колонки найдены")
+                st.success("✅ Файл загружен")
                 
                 # Показываем первые строки
-                st.subheader("📋 Загруженные данные (первые 5 строк)")
-                st.dataframe(df.head())
+                st.subheader("📋 Загруженные данные")
+                st.dataframe(df.head(10))
                 
                 # Статистика по группам
-                st.subheader("📊 Статистика по группам")
+                poya_count = len(df[df['Диагноз'] == 'ПОЯ'])
+                rya_count = len(df[df['Диагноз'] == 'РЯ'])
+                
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.info(f"ПОЯ: {len(df[df['Диагноз'] == 'ПОЯ'])} пациентов")
+                    st.info(f"📊 ПОЯ: {poya_count} пациентов")
                 with col2:
-                    st.info(f"РЯ: {len(df[df['Диагноз'] == 'РЯ'])} пациентов")
+                    st.info(f"📊 РЯ: {rya_count} пациентов")
                 
-                # === РАСЧЁТ ПАРАМЕТРОВ СВЕЧЕЙ ===
-                st.markdown("---")
-                st.subheader("🧮 Расчёт параметров свечей")
-                
-                # Создаём новую таблицу с расчётами
-                result_df = df.copy()
-                
-                # Расчёт параметров свечи
-                result_df['Open'] = result_df['V_капс']
-                result_df['Close'] = result_df['V_центр']
-                result_df['High'] = result_df[['V_капс', 'V_перег', 'V_центр']].max(axis=1)
-                result_df['Low'] = result_df[['V_капс', 'V_перег', 'V_центр']].min(axis=1)
-                result_df['Body'] = result_df['Close'] - result_df['Open']
-                result_df['Направление'] = result_df['Body'].apply(
-                    lambda x: 'Бычья (рост к центру)' if x > 0 else 'Медвежья (падение к центру)'
-                )
-                result_df['Верхняя_тень'] = result_df['High'] - result_df[['Open', 'Close']].max(axis=1)
-                result_df['Нижняя_тень'] = result_df[['Open', 'Close']].min(axis=1) - result_df['Low']
-                result_df['Длина_тела'] = abs(result_df['Body'])
-                result_df['Цвет'] = result_df['Body'].apply(lambda x: 'Зелёный' if x > 0 else 'Красный')
-                
-                # Показываем результат
-                st.dataframe(result_df)
-                
-                # === СТАТИСТИКА ===
-                st.markdown("---")
-                st.subheader("📈 Статистический анализ")
-                
-                # Разделяем по группам
-                poya = result_df[result_df['Диагноз'] == 'ПОЯ']
-                rya = result_df[result_df['Диагноз'] == 'РЯ']
-                
-                # Проверка наличия групп
-                if len(poya) == 0 or len(rya) == 0:
+                if poya_count == 0 or rya_count == 0:
                     st.warning("⚠️ В файле должны быть и ПОЯ, и РЯ для сравнения")
                 else:
+                    # === РАСЧЁТ ПАРАМЕТРОВ СВЕЧЕЙ ===
+                    st.markdown("---")
+                    st.subheader("🧮 Расчёт параметров свечей")
+                    
+                    result_df = df.copy()
+                    
+                    # Расчёт параметров
+                    result_df['Open'] = result_df['V_капс']
+                    result_df['Close'] = result_df['V_центр']
+                    result_df['High'] = result_df[['V_капс', 'V_перег', 'V_центр']].max(axis=1)
+                    result_df['Low'] = result_df[['V_капс', 'V_перег', 'V_центр']].min(axis=1)
+                    result_df['Body'] = result_df['Close'] - result_df['Open']
+                    result_df['Направление'] = result_df['Body'].apply(
+                        lambda x: 'Бычья (рост к центру)' if x > 0 else 'Медвежья (падение к центру)'
+                    )
+                    result_df['Длина_тела'] = abs(result_df['Body'])
+                    result_df['Цвет'] = result_df['Body'].apply(lambda x: 'Зелёный' if x > 0 else 'Красный')
+                    
+                    # Показываем результат
+                    st.dataframe(result_df)
+                    
+                    # === СТАТИСТИКА ===
+                    st.markdown("---")
+                    st.subheader("📈 Статистический анализ")
+                    
+                    poya = result_df[result_df['Диагноз'] == 'ПОЯ']
+                    rya = result_df[result_df['Диагноз'] == 'РЯ']
+                    
+                    # Манн-Уитни
+                    u_stat, p_body = mannwhitneyu(
+                        poya['Длина_тела'].dropna(), 
+                        rya['Длина_тела'].dropna(),
+                        alternative='two-sided'
+                    )
+                    
+                    # Таблица для Фишера
+                    poya_bull = len(poya[poya['Body'] > 0])
+                    poya_bear = len(poya[poya['Body'] < 0])
+                    rya_bull = len(rya[rya['Body'] > 0])
+                    rya_bear = len(rya[rya['Body'] < 0])
+                    
+                    _, p_fisher = fisher_exact([[poya_bull, poya_bear], [rya_bull, rya_bear]])
+                    
+                    # Три колонки со статистикой
                     col_stat1, col_stat2, col_stat3 = st.columns(3)
                     
                     with col_stat1:
-                        st.markdown("**Длина тела свечи (Body)**")
-                        
-                        # Манн-Уитни для длины тела
-                        u_stat, p_body = mannwhitneyu(
-                            abs(poya['Body'].dropna()), 
-                            abs(rya['Body'].dropna()),
-                            alternative='two-sided'
-                        )
-                        
+                        st.markdown("### 📊 Длина тела")
                         st.metric("ПОЯ (медиана)", f"{poya['Длина_тела'].median():.1f}")
                         st.metric("РЯ (медиана)", f"{rya['Длина_тела'].median():.1f}")
-                        
                         if p_body < 0.001:
-                            st.success(f"**p < 0.001**")
-                        elif p_body < 0.05:
-                            st.success(f"**p = {p_body:.3f}**")
+                            st.success("**p < 0.001**")
                         else:
-                            st.warning(f"p = {p_body:.3f}")
+                            st.success(f"**p = {p_body:.3f}**")
                     
                     with col_stat2:
-                        st.markdown("**Направление свечей**")
-                        
-                        # Таблица для критерия Фишера
-                        poya_dirs = poya['Направление'].value_counts()
-                        rya_dirs = rya['Направление'].value_counts()
-                        
-                        # Создаём таблицу 2x2
-                        poya_bull = poya_dirs.get('Бычья (рост к центру)', 0)
-                        poya_bear = poya_dirs.get('Медвежья (падение к центру)', 0)
-                        rya_bull = rya_dirs.get('Бычья (рост к центру)', 0)
-                        rya_bear = rya_dirs.get('Медвежья (падение к центру)', 0)
-                        
-                        # Точный критерий Фишера
-                        if poya_bull + poya_bear > 0 and rya_bull + rya_bear > 0:
-                            _, p_fisher = fisher_exact([[poya_bull, poya_bear], [rya_bull, rya_bear]])
-                            
-                            st.write(f"ПОЯ: Бычьих {poya_bull}, Медвежьих {poya_bear}")
-                            st.write(f"РЯ: Бычьих {rya_bull}, Медвежьих {rya_bear}")
-                            
-                            if p_fisher < 0.001:
-                                st.success(f"**p < 0.001**")
-                            elif p_fisher < 0.05:
-                                st.success(f"**p = {p_fisher:.3f}**")
-                            else:
-                                st.warning(f"p = {p_fisher:.3f}")
+                        st.markdown("### 🎯 Направление")
+                        st.write(f"ПОЯ: Бычьих {poya_bull}, Медвежьих {poya_bear}")
+                        st.write(f"РЯ: Бычьих {rya_bull}, Медвежьих {rya_bear}")
+                        if p_fisher < 0.001:
+                            st.success("**p < 0.001**")
+                        else:
+                            st.success(f"**p = {p_fisher:.3f}**")
                     
                     with col_stat3:
-                        st.markdown("**Сводная таблица**")
-                        summary = pd.DataFrame({
-                            'Показатель': ['Количество', 'Медиана Body', 'Бычьи (%)', 'Медвежьи (%)'],
-                            'ПОЯ': [
-                                len(poya),
-                                f"{poya['Длина_тела'].median():.1f}",
-                                f"{(poya_bull/len(poya)*100):.0f}%" if len(poya)>0 else "0%",
-                                f"{(poya_bear/len(poya)*100):.0f}%" if len(poya)>0 else "0%"
-                            ],
-                            'РЯ': [
-                                len(rya),
-                                f"{rya['Длина_тела'].median():.1f}",
-                                f"{(rya_bull/len(rya)*100):.0f}%" if len(rya)>0 else "0%",
-                                f"{(rya_bear/len(rya)*100):.0f}%" if len(rya)>0 else "0%"
-                            ]
-                        })
-                        st.dataframe(summary)
+                        st.markdown("### 📋 Сводка")
+                        st.write(f"Всего: {len(result_df)}")
+                        st.write(f"ПОЯ: {len(poya)} ({len(poya)/len(result_df)*100:.0f}%)")
+                        st.write(f"РЯ: {len(rya)} ({len(rya)/len(result_df)*100:.0f}%)")
                     
-                    # === ГРАФИКИ ===
+                    # === КРАСИВЫЙ ГРАФИК СВЕЧЕЙ ===
                     st.markdown("---")
-                    st.subheader("📉 Визуализация: Японские свечи")
+                    st.subheader("📈 Японские свечи")
                     
-                    # Подготовка данных для графика
-                    plot_data = result_df.copy()
-                    plot_data['Номер'] = range(1, len(plot_data) + 1)
+                    # Подготовка данных
+                    plot_df = result_df.copy()
+                    plot_df['x'] = range(len(plot_df))
                     
-                    # Создаём график
-                    fig = make_subplots(
-                        rows=2, cols=1,
-                        subplot_titles=('Японские свечи (все пациенты)', 'Box plot: Длина тела свечи'),
-                        vertical_spacing=0.15
-                    )
+                    # Создаём красивый график
+                    fig = go.Figure()
                     
-                    # Добавляем свечи
-                    for i, row in plot_data.iterrows():
-                        color = 'green' if row['Body'] > 0 else 'red'
+                    # Добавляем каждую свечу
+                    for _, row in plot_df.iterrows():
+                        color = '#2ecc71' if row['Body'] > 0 else '#e74c3c'  # зелёный/красный
                         
-                        # Тело свечи
-                        fig.add_trace(
-                            go.Scatter(
-                                x=[row['Номер'], row['Номер']],
-                                y=[row['Open'], row['Close']],
-                                mode='lines',
-                                line=dict(color=color, width=4),
-                                showlegend=False,
-                                hovertext=f"{row['ID']}<br>Open: {row['Open']}<br>Close: {row['Close']}"
-                            ),
-                            row=1, col=1
-                        )
+                        # Тень (High-Low)
+                        fig.add_trace(go.Scatter(
+                            x=[row['x'], row['x']],
+                            y=[row['Low'], row['High']],
+                            mode='lines',
+                            line=dict(color='#95a5a6', width=1),
+                            showlegend=False,
+                            hoverinfo='skip'
+                        ))
                         
-                        # Тени (High-Low)
-                        fig.add_trace(
-                            go.Scatter(
-                                x=[row['Номер'], row['Номер']],
-                                y=[row['Low'], row['High']],
-                                mode='lines',
-                                line=dict(color='gray', width=1),
-                                showlegend=False,
-                                hovertext=f"High: {row['High']}<br>Low: {row['Low']}"
-                            ),
-                            row=1, col=1
+                        # Тело свечи (Open-Close)
+                        fig.add_trace(go.Scatter(
+                            x=[row['x'], row['x']],
+                            y=[row['Open'], row['Close']],
+                            mode='lines',
+                            line=dict(color=color, width=4),
+                            name=row['ID'],
+                            text=f"ID: {row['ID']}<br>"
+                                 f"Open: {row['Open']}<br>"
+                                 f"Close: {row['Close']}<br>"
+                                 f"High: {row['High']}<br>"
+                                 f"Low: {row['Low']}<br>"
+                                 f"Body: {row['Body']:.1f}<br>"
+                                 f"Диагноз: {row['Диагноз']}",
+                            hoverinfo='text',
+                            showlegend=False
+                        ))
+                    
+                    # Добавляем разделительную линию между группами
+                    if poya_count > 0 and rya_count > 0:
+                        fig.add_vline(x=poya_count - 0.5, line_dash="dash", line_color="black", line_width=2)
+                        
+                        # Подписи групп
+                        fig.add_annotation(
+                            x=poya_count/2,
+                            y=max(plot_df['High']) * 1.05,
+                            text="ПОЯ",
+                            showarrow=False,
+                            font=dict(size=16, color="red")
+                        )
+                        fig.add_annotation(
+                            x=poya_count + rya_count/2,
+                            y=max(plot_df['High']) * 1.05,
+                            text="РЯ",
+                            showarrow=False,
+                            font=dict(size=16, color="green")
                         )
                     
-                    # Добавляем Box plot
-                    fig.add_trace(
-                        go.Box(
-                            y=poya['Длина_тела'],
-                            name='ПОЯ',
-                            marker_color='red',
-                            boxmean=True
-                        ),
-                        row=2, col=1
+                    # Настройка графика
+                    fig.update_layout(
+                        title="Японские свечи: скорость кровотока (периферия → центр)",
+                        xaxis_title="Пациенты",
+                        yaxis_title="Скорость кровотока (см/с)",
+                        template="plotly_white",
+                        height=600,
+                        hovermode='closest'
                     )
                     
-                    fig.add_trace(
-                        go.Box(
-                            y=rya['Длина_тела'],
-                            name='РЯ',
-                            marker_color='green',
-                            boxmean=True
-                        ),
-                        row=2, col=1
-                    )
-                    
-                    # Настройка осей
-                    fig.update_xaxes(title_text="Пациенты (по порядку)", row=1, col=1)
-                    fig.update_yaxes(title_text="Скорость кровотока (см/с)", row=1, col=1)
-                    fig.update_xaxes(title_text="Группа", row=2, col=1)
-                    fig.update_yaxes(title_text="Длина тела свечи", row=2, col=1)
-                    
-                    fig.update_layout(height=800, showlegend=False)
+                    fig.update_xaxes(tickmode='linear', tick0=0, dtick=5)
                     
                     st.plotly_chart(fig, use_container_width=True)
                     
-                    # === СОХРАНЕНИЕ РЕЗУЛЬТАТОВ ===
+                    # === BOX PLOT ===
+                    st.subheader("📊 Сравнение длины тела свечей")
+                    
+                    fig2 = go.Figure()
+                    
+                    fig2.add_trace(go.Box(
+                        y=poya['Длина_тела'],
+                        name='ПОЯ',
+                        marker_color='#e74c3c',
+                        boxmean='sd',
+                        jitter=0.3,
+                        pointpos=-1.8
+                    ))
+                    
+                    fig2.add_trace(go.Box(
+                        y=rya['Длина_тела'],
+                        name='РЯ',
+                        marker_color='#2ecc71',
+                        boxmean='sd',
+                        jitter=0.3,
+                        pointpos=-1.8
+                    ))
+                    
+                    fig2.update_layout(
+                        title="Распределение длины тела свечей",
+                        yaxis_title="Длина тела |Close - Open| (см/с)",
+                        template="plotly_white",
+                        height=500
+                    )
+                    
+                    st.plotly_chart(fig2, use_container_width=True)
+                    
+                    # === СОХРАНЕНИЕ ===
                     st.markdown("---")
                     st.subheader("💾 Сохранить результаты")
                     
                     col_save1, col_save2, col_save3 = st.columns(3)
                     
-                    # Сохранить Excel
+                    # Excel
                     with col_save1:
-                        # Подготовка Excel для скачивания
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             result_df.to_excel(writer, sheet_name='Свечи', index=False)
                             
-                            # Добавляем лист со статистикой
                             stats_df = pd.DataFrame({
-                                'Показатель': ['Количество ПОЯ', 'Количество РЯ', 
+                                'Показатель': ['ПОЯ (n)', 'РЯ (n)', 
                                              'Медиана Body ПОЯ', 'Медиана Body РЯ',
                                              'p-value (Mann-Whitney)', 'p-value (Fisher)'],
                                 'Значение': [
                                     len(poya), len(rya),
                                     f"{poya['Длина_тела'].median():.1f}",
                                     f"{rya['Длина_тела'].median():.1f}",
-                                    f"{p_body:.4f}" if 'p_body' in locals() else '-',
-                                    f"{p_fisher:.4f}" if 'p_fisher' in locals() else '-'
+                                    f"{p_body:.4f}",
+                                    f"{p_fisher:.4f}"
                                 ]
                             })
                             stats_df.to_excel(writer, sheet_name='Статистика', index=False)
@@ -589,93 +601,73 @@ with tab2:
                         output.seek(0)
                         
                         st.download_button(
-                            label="📥 Скачать Excel (все расчёты)",
+                            label="📥 Excel (все расчёты)",
                             data=output,
                             file_name=f"uzi_candles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            key='download_excel'
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
                     
-                    # Сохранить график PNG
+                    # PNG (с предупреждением)
                     with col_save2:
-                        # Сохраняем график как PNG
-                        img_bytes = fig.to_image(format="png", width=1200, height=800)
+                        st.info("ℹ️ Для сохранения PNG установите kaleido")
+                        st.code("pip install --upgrade kaleido", language="bash")
+                        
+                        # Текст как запасной вариант
+                        report = f"""Результаты анализа:
+ПОЯ: n={len(poya)}, медиана={poya['Длина_тела'].median():.1f}
+РЯ: n={len(rya)}, медиана={rya['Длина_тела'].median():.1f}
+p (Mann-Whitney) = {p_body:.4f}
+p (Fisher) = {p_fisher:.4f}"""
                         
                         st.download_button(
-                            label="📥 Скачать график (PNG)",
-                            data=img_bytes,
-                            file_name=f"uzi_candles_plot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
-                            mime="image/png",
-                            key='download_png'
-                        )
-                    
-                    # Копировать в буфер (текстовый отчёт)
-                    with col_save3:
-                        report = f"""УЗИ КАЛЬКУЛЯТОР - РЕЗУЛЬТАТЫ
-Дата: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-
-ВСЕГО ПАЦИЕНТОВ: {len(result_df)}
-ПОЯ: {len(poya)}
-РЯ: {len(rya)}
-
-СТАТИСТИКА:
-- Медиана длины тела (ПОЯ): {poya['Длина_тела'].median():.1f}
-- Медиана длины тела (РЯ): {rya['Длина_тела'].median():.1f}
-- p-value (Mann-Whitney): {p_body:.4f}
-
-НАПРАВЛЕНИЯ СВЕЧЕЙ:
-ПОЯ: Бычьих {poya_bull}, Медвежьих {poya_bear}
-РЯ: Бычьих {rya_bull}, Медвежьих {rya_bear}
-p-value (Fisher): {p_fisher:.4f}
-"""
-                        st.download_button(
-                            label="📥 Скачать отчёт (TXT)",
+                            label="📥 Сохранить результаты (TXT)",
                             data=report,
-                            file_name=f"uzi_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                            key='download_txt'
+                            file_name=f"uzi_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                         )
                     
-                    # Инструкция по результатам
-                    with st.expander("📊 Как интерпретировать результаты"):
+                    # HTML график
+                    with col_save3:
+                        # Сохраняем график как HTML
+                        html_str = f"""
+                        <html>
+                        <head><title>Японские свечи УЗИ</title></head>
+                        <body>
+                        <h2>Японские свечи: гемодинамика ПОЯ vs РЯ</h2>
+                        <p>ПОЯ: {len(poya)} пациентов, РЯ: {len(rya)} пациентов</p>
+                        <p>p (Mann-Whitney) = {p_body:.4f}</p>
+                        <p>p (Fisher) = {p_fisher:.4f}</p>
+                        </body>
+                        </html>
+                        """
+                        
+                        st.download_button(
+                            label="📥 Сохранить отчёт (HTML)",
+                            data=html_str,
+                            file_name=f"uzi_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+                        )
+                    
+                    # Интерпретация
+                    with st.expander("📊 Интерпретация результатов"):
                         st.markdown("""
-                        ### Интерпретация
+                        ### Как читать результаты
                         
                         **Зелёные свечи (растущие)** = Close > Open  
-                        → скорость кровотока **увеличивается** к центру  
-                        → характерно для **РЯ** (рак)
+                        → скорость **увеличивается** к центру  
+                        → характерно для **РЯ**
                         
                         **Красные свечи (падающие)** = Close < Open  
-                        → скорость кровотока **уменьшается** к центру  
-                        → характерно для **ПОЯ** (пограничные)
+                        → скорость **уменьшается** к центру  
+                        → характерно для **ПОЯ**
                         
                         **Статистика:**
                         - **p < 0.05** = различия значимы
                         - **p < 0.001** = различия высоко значимы
-                        - **p > 0.05** = различий не обнаружено
                         """)
         
         except Exception as e:
-            st.error(f"❌ Ошибка при обработке файла: {str(e)}")
-            st.info("Проверьте формат файла. Должны быть колонки: ID, Диагноз, V_капс, V_перег, V_центр")
-    
-    else:
-        st.info("👆 Загрузите файл Excel, чтобы начать расчёт")
-        
-        # Пример данных
-        with st.expander("📋 Пример правильного файла"):
-            example = pd.DataFrame({
-                'ID': ['ПОЯ-001', 'ПОЯ-002', 'РЯ-001', 'РЯ-002'],
-                'Диагноз': ['ПОЯ', 'ПОЯ', 'РЯ', 'РЯ'],
-                'V_капс': [35, 38, 32, 34],
-                'V_перег': [12, 10, 35, 33],
-                'V_центр': [15, 18, 41, 40]
-            })
-            st.dataframe(example)
+            st.error(f"❌ Ошибка: {str(e)}")
+            st.info("Проверьте формат файла")
 
 # Подвал
 st.markdown("---")
-st.markdown("""
-**📌 Для диссертации:**
-- Вкладка 1: ручной расчёт критериев Фишера и Манна-Уитни
-- Вкладка 2: автоматический анализ гемодинамики методом японских свечей
-""")
+st.markdown("**📌 Для диссертации: статистика + визуализация**")
